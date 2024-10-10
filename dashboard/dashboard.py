@@ -6,8 +6,8 @@ import streamlit as st
 sns.set(style='dark')
 
 # Load dataset day.csv dan hour.csv
-day_df = pd.read_csv('../data/day.csv')
-hour_df = pd.read_csv('../data/hour.csv')
+day_df = pd.read_csv('day.csv')
+hour_df = pd.read_csv('hour.csv')
 
 # Convert 'dteday' to datetime format
 day_df['dteday'] = pd.to_datetime(day_df['dteday'])
@@ -28,15 +28,38 @@ with st.sidebar:
         value=[min_date, max_date]
     )
 
+# Filter data berdasarkan rentang waktu
 main_df = day_df[(day_df["dteday"] >= pd.to_datetime(start_date)) & 
                  (day_df["dteday"] <= pd.to_datetime(end_date))]
+
+# Hitung total dan rata-rata peminjaman untuk hari kerja dan hari libur
+total_weekday = main_df[main_df['workingday'] == 1]['cnt'].sum()
+avg_weekday = main_df[main_df['workingday'] == 1]['cnt'].mean()
+
+total_holiday = main_df[main_df['workingday'] == 0]['cnt'].sum()
+avg_holiday = main_df[main_df['workingday'] == 0]['cnt'].mean()
 
 # Dashboard Header
 st.header('Bike Sharing Dashboard')
 
+# Menampilkan informasi total dan rata-rata peminjaman
+st.subheader("Statistik Peminjaman Sepeda")
+col1, col2 = st.columns(2)
+
+# Tampilan untuk hari kerja (weekday)
+with col1:
+    st.write("### Hari Kerja (Weekday)")
+    st.metric(label="Total Peminjaman", value=total_weekday)
+    st.metric(label="Rata-rata Peminjaman", value=f"{avg_weekday:.2f}")
+
+# Tampilan untuk hari libur (holiday)
+with col2:
+    st.write("### Hari Libur (Holiday)")
+    st.metric(label="Total Peminjaman", value=total_holiday)
+    st.metric(label="Rata-rata Peminjaman", value=f"{avg_holiday:.2f}")
+
 # Scatter plot: Suhu vs Total Peminjaman dengan Hari Kerja dan Libur
 st.subheader("Pengaruh Suhu Terhadap Total Peminjaman Sepeda pada Hari Kerja vs Hari Libur")
-
 fig, ax = plt.subplots(figsize=(10, 6))
 sns.scatterplot(data=day_df, x='temp', y='cnt', hue='workingday', palette='coolwarm', ax=ax)
 ax.set_title('Pengaruh Suhu Terhadap Total Peminjaman Sepeda')
@@ -63,8 +86,6 @@ ax.set_xticks([0, 1, 2, 3])
 ax.set_xticklabels(['Clear', 'Mist', 'Light Snow/Rain', 'Heavy Rain'], rotation=0)
 
 st.pyplot(fig)
-
-
 
 # Bar plot: Peminjaman Sepeda Pengguna Terdaftar vs Kasual per Jam
 st.subheader("Peminjaman Sepeda Pengguna Terdaftar vs Kasual per Jam")
