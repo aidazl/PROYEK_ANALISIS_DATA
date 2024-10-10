@@ -9,31 +9,9 @@ sns.set(style='dark')
 day_df = pd.read_csv('../data/day.csv')
 hour_df = pd.read_csv('../data/hour.csv')
 
-# Helper function untuk menyiapkan berbagai dataframe
-
-def create_daily_rentals_df(df):
-    daily_rentals_df = df[['dteday', 'cnt']].groupby('dteday').sum().reset_index()
-    return daily_rentals_df
-
-def create_temp_rentals_df(df):
-    temp_rentals_df = df.groupby("temp").cnt.sum().reset_index()
-    return temp_rentals_df
-
-def create_weather_rentals_df(df):
-    weather_rentals_df = df.groupby("weathersit").cnt.sum().reset_index()
-    return weather_rentals_df
-
-def create_byusertype_df(df):
-    byusertype_df = df.groupby(by="yr").agg({
-        "casual": "sum",
-        "registered": "sum"
-    }).reset_index()
-    
-    return byusertype_df
-
 # Convert 'dteday' to datetime format
 day_df['dteday'] = pd.to_datetime(day_df['dteday'])
-day_df.sort_values(by='dteday', inplace=True)
+hour_df['dteday'] = pd.to_datetime(hour_df['dteday'])
 
 # Sidebar untuk filter rentang waktu
 min_date = day_df["dteday"].min()
@@ -53,85 +31,55 @@ with st.sidebar:
 main_df = day_df[(day_df["dteday"] >= pd.to_datetime(start_date)) & 
                  (day_df["dteday"] <= pd.to_datetime(end_date))]
 
-# Menyiapkan berbagai dataframe
-daily_rentals_df = create_daily_rentals_df(main_df)
-temp_rentals_df = create_temp_rentals_df(main_df)
-weather_rentals_df = create_weather_rentals_df(main_df)
-byusertype_df = create_byusertype_df(main_df)
-
 # Dashboard Header
 st.header('Bike Sharing Dashboard')
-st.subheader('Daily Rentals')
 
-# Menampilkan metrik total dan rata-rata rentals
-col1, col2 = st.columns(2)
+# Scatter plot: Suhu vs Total Peminjaman dengan Hari Kerja dan Libur
+st.subheader("Pengaruh Suhu Terhadap Total Peminjaman Sepeda pada Hari Kerja vs Hari Libur")
 
-with col1:
-    total_rentals = daily_rentals_df.cnt.sum()
-    st.metric("Total Rentals", value=total_rentals)
-
-with col2:
-    avg_rentals = round(daily_rentals_df.cnt.mean(), 2)
-    st.metric("Average Rentals per Day", value=avg_rentals)
-
-# Plot total daily rentals
-fig, ax = plt.subplots(figsize=(16, 8))
-ax.plot(
-    daily_rentals_df["dteday"],
-    daily_rentals_df["cnt"],
-    marker='o', 
-    linewidth=2,
-    color="#90CAF9"
-)
-ax.set_title("Total Daily Rentals", fontsize=25)
-ax.tick_params(axis='y', labelsize=15)
-ax.tick_params(axis='x', labelsize=15)
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.scatterplot(data=day_df, x='temp', y='cnt', hue='workingday', palette='coolwarm', ax=ax)
+ax.set_title('Pengaruh Suhu Terhadap Total Peminjaman Sepeda')
+ax.set_xlabel('Suhu (Normalized)')
+ax.set_ylabel('Jumlah Total Peminjaman Sepeda')
+ax.legend(title='Hari Kerja')
 st.pyplot(fig)
 
-# Plot rentals by temperature
-st.subheader("Rentals by Temperature")
+# Bar plot: Jumlah Peminjaman Pengguna Kasual Berdasarkan Kondisi Cuaca
+st.subheader("Jumlah Peminjaman Pengguna Kasual Berdasarkan Kondisi Cuaca")
 
-fig, ax = plt.subplots(figsize=(16, 8))
-sns.lineplot(x="temp", y="cnt", data=temp_rentals_df, ax=ax, color="#90CAF9")
-ax.set_title("Total Rentals by Temperature", fontsize=25)
+# Group by 'weathersit' and sum 'casual' rentals
+weather_casual = day_df.groupby('weathersit')['casual'].sum()
+
+# Create the plot
+fig, ax = plt.subplots(figsize=(10, 6))
+weather_casual.plot(kind='bar', color='skyblue', ax=ax)
+ax.set_title('Jumlah Peminjaman Pengguna Kasual Berdasarkan Kondisi Cuaca')
+ax.set_xlabel('Kondisi Cuaca')
+ax.set_ylabel('Jumlah Peminjaman Pengguna Kasual')
+
+# Set tick labels for weather categories
+ax.set_xticks([0, 1, 2, 3])
+ax.set_xticklabels(['Clear', 'Mist', 'Light Snow/Rain', 'Heavy Rain'], rotation=0)
+
 st.pyplot(fig)
 
-# Plot rentals by weather condition
-st.subheader("Rentals by Weather Condition")
 
-fig, ax = plt.subplots(figsize=(16, 8))
-sns.barplot(x="weathersit", y="cnt", data=weather_rentals_df, hue="weathersit",palette="Blues", ax=ax, legend=False)
-ax.set_title("Total Rentals by Weather Condition", fontsize=25)
-st.pyplot(fig)
 
-# Usertype analysis
-st.subheader("Rentals by User Type")
+# Bar plot: Peminjaman Sepeda Pengguna Terdaftar vs Kasual per Jam
+st.subheader("Peminjaman Sepeda Pengguna Terdaftar vs Kasual per Jam")
 
-col1, col2 = st.columns(2)
+hourly_counts = hour_df.groupby('hr')[['casual', 'registered']].sum()
 
-with col1:
-    fig, ax = plt.subplots(figsize=(16, 8))
-    sns.barplot(x="yr", y="casual", data=byusertype_df, hue="casual", palette="Blues", ax=ax, legend=False)
-    ax.set_title("Rentals by Casual Users", fontsize=25)
-    st.pyplot(fig)
+# Membuat bar plot perbandingan antara pengguna kasual dan terdaftar per jam
+fig, ax = plt.subplots(figsize=(10, 6))
+hourly_counts.plot(kind='bar', ax=ax)
 
-with col2:
-    fig, ax = plt.subplots(figsize=(16, 8))
-    sns.barplot(x="yr", y="registered", data=byusertype_df, hue="registered", palette="Greens", ax=ax, legend=False)
-    ax.set_title("Rentals by Registered Users", fontsize=25)
-    st.pyplot(fig)
+# Menambahkan judul dan label pada plot
+ax.set_title('Peminjaman Sepeda Pengguna Terdaftar vs Kasual per Jam')
+ax.set_xlabel('Jam')
+ax.set_ylabel('Jumlah Peminjaman')
+ax.legend(['Kasual', 'Terdaftar'])
 
-# Load dataset hour.csv for hourly analysis
-st.subheader("Hourly Rentals")
-
-hour_df['dteday'] = pd.to_datetime(hour_df['dteday'])
-hour_df.sort_values(by=['dteday', 'hr'], inplace=True)
-
-hourly_rentals_df = hour_df.groupby(['dteday', 'hr']).cnt.sum().reset_index()
-
-fig, ax = plt.subplots(figsize=(16, 8))
-sns.lineplot(x="hr", y="cnt", data=hourly_rentals_df, ax=ax, marker="o", color="#90CAF9")
-ax.set_title("Hourly Rentals", fontsize=25)
-ax.set_xlabel("Hour of Day", fontsize=15)
-ax.set_ylabel("Total Rentals", fontsize=15)
+# Tampilkan plot menggunakan Streamlit
 st.pyplot(fig)
