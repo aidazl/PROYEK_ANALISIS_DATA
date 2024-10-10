@@ -6,8 +6,8 @@ import streamlit as st
 sns.set(style='dark')
 
 # Load dataset day.csv dan hour.csv
-day_df = pd.read_csv('data/day.csv')
-hour_df = pd.read_csv('data/hour.csv')
+day_df = pd.read_csv('../data/day.csv')
+hour_df = pd.read_csv('../data/hour.csv')
 
 # Helper function untuk menyiapkan berbagai dataframe
 
